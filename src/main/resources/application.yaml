@@ -1,0 +1,92 @@
+server:
+  port: 8123
+  servlet:
+    context-path: /api
+#spring:
+#  application:
+#    name: ai-agent
+#  ai:
+#    zhipuai:
+#      api-key: ${ZHIPU_API_KEY}
+#      chat:
+#        options:
+#          model: glm-4-flash   # 免费额度大，开发期零成本；生产换 glm-4-plus
+#          temperature: 0.7
+#      embedding:
+#        options:
+#          model: embedding-3
+# application.yml
+spring:
+  application:
+    name: ai-agent
+  profiles:
+    active: local
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    # ⚠️ 三个关键参数：unicode + utf8mb4 + 时区
+    url: jdbc:mysql://localhost:3306/ai-agent?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: root
+  ai:
+    chat:
+      memory:
+        repository:
+          jdbc:
+            initialize-schema: always   # embedded(默认) / always / never
+            schema: classpath:sql/schema-mysql.sql  # 自定义建表脚本路径
+    mcp:
+      client:
+        enabled: true
+        name: spring-ai-mcp-client
+        version: 1.0.0
+        type: sync
+        request-timeout: 60000
+        stdio:
+          servers-configuration: classpath:/mcp/mcp-servers-config.json
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+app:
+  vector:
+    url: jdbc:postgresql://localhost:55432/ai-agent
+    username: postgres
+    password: 123456
+  agent-tools:
+    workspace-directory: ${AGENT_TOOLS_WORKSPACE:agent-workspace}
+    search-api-url: ${AGENT_TOOLS_SEARCH_API_URL:https://api.tavily.com/search}
+    search-api-key: ${TAVILY_API_KEY:}
+    http-timeout: 10s
+    terminal-timeout: 5s
+    max-output-chars: 8000
+    max-file-content-chars: 20000
+    max-web-content-chars: 20000
+    max-response-bytes: 2097152
+    pdf-font-path: ${AGENT_TOOLS_PDF_FONT_PATH:}
+    allowed-commands:
+      - pwd
+      - ls
+      - find
+      - rg
+      - cat
+      - head
+      - tail
+      - wc
+      - git
+# springdoc-openapi
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+  api-docs:
+    path: /v3/api-docs
+  group-configs:
+    - group: 'default'
+      paths-to-match: '/**'
+      packages-to-scan: com.api.aiagent.controller
+# knife4j
+knife4j:
+  enable: true
+  setting:
+    language: zh_cn
