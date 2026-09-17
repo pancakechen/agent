@@ -2,11 +2,9 @@ package com.api.aiagent.app;
 
 
 import cn.hutool.core.collection.CollUtil;
-import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.extern.log4j.Log4j2;
-import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.ToolResponseMessage;
 import org.springframework.ai.chat.model.ChatResponse;
@@ -49,7 +47,7 @@ public class ToolCallAgent extends ReActAgent {
                 .internalToolExecutionEnabled(false)
                 .build();
 */
-        // 适用于 Spring AI 1.1.8：手动执行工具时，回调必须随 Prompt 传入。
+        // 手动执行工具时，回调必须随 Prompt 传入。
         this.toolCallingChatOptions = ToolCallingChatOptions.builder()
                 .toolCallbacks(availableTools)
                 .internalToolExecutionEnabled(false)
@@ -114,16 +112,10 @@ public class ToolCallAgent extends ReActAgent {
         Prompt prompt = new Prompt(getMessagesList(), toolCallingChatOptions);
 
         try {
-            // 构建调用链（适用于 Spring AI 1.1.8）
-            var chatClientCall = getChatClient().prompt(prompt)
-                    .system(getSystemPrompt());
-
-            // 如果启用了 ChatMemory，传入 conversationId
-            if (!StringUtils.isEmpty(getConversationId())) {
-                chatClientCall = chatClientCall.advisors(a -> a.param(ChatMemory.CONVERSATION_ID, getConversationId()));
-            }
-
-            ChatResponse chatResponse = chatClientCall.call().chatResponse();
+            ChatResponse chatResponse = getChatClient().prompt(prompt)
+                    .system(getSystemPrompt())
+                    .call()
+                    .chatResponse();
 
             this.toolChatResponse = chatResponse;
             AssistantMessage assistantMessage = chatResponse.getResult().getOutput();

@@ -2,7 +2,6 @@ package com.api.aiagent.app;
 
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.model.ChatModel;
@@ -15,7 +14,7 @@ import org.springframework.stereotype.Component;
  * 最终可使用的实例
  */
 @Component
-public class Manus extends ToolCallAgent{
+public class Manus extends ToolCallAgent {
 
     private final ToolCallback[] availableTools;
     private final ChatModel chatModel;
@@ -42,6 +41,13 @@ public class Manus extends ToolCallAgent{
                 You are OpenManus, an all-capable AI assistant aimed at solving user tasks.
                 Use the available tools when needed. After each tool result, decide whether another tool call is needed.
                 When the task is complete, respond directly with the final answer without calling another tool.
+                Tool usage guidelines:
+                 1. If a tool fails, don't retry the same tool with the same parameters immediately
+                 2. Try alternative approaches or different tools when one fails
+                 3. If web scraping fails due to anti-bot measures, work with the search results you already have
+                 4. Avoid inventing URLs - only use URLs from actual search results
+                 5. After 2-3 failed attempts with the same approach, switch strategy or provide answer
+                based on available information
                 """;
         this.setSystemPrompt(systemPrompt);
 
@@ -66,10 +72,12 @@ public class Manus extends ToolCallAgent{
     }
 
     /**
-     * 根据 userId 决定是否启用记忆和知识库功能（适用于 Spring AI 1.1.8）
+     * 根据 userId 决定是否启用记忆和知识库功能
+     * 这里做了些调整 没有直接继承父类的run方法 所以不加注解 @EqualsAndHashCode(callSuper = true)
+     * 而是用super() 的方式调用
      *
      * @param userInput 用户输入
-     * @param userId 用户 ID（可选），为空则不启用记忆和知识库
+     * @param userId    用户 ID（可选），为空则不启用记忆和知识库
      * @return Agent 执行结果
      */
     public String run(String userInput, String userId) {
@@ -77,11 +85,9 @@ public class Manus extends ToolCallAgent{
         if (!StringUtils.isEmpty(userId)) {
             // 生成 conversationId
             String conversationId = userId;
-            // 构建带记忆和向量检索的 ChatClient
+            // 构建带向量检索的 ChatClient（不使用 MessageChatMemoryAdvisor，改为手动保存）
             ChatClient chatClient = ChatClient.builder(chatModel)
                     .defaultAdvisors(
-                            MessageChatMemoryAdvisor.builder(chatMemory)
-                                    .build(),
                             QuestionAnswerAdvisor.builder(vectorStore)
                                     .searchRequest(SearchRequest.builder()
                                             .topK(4)
