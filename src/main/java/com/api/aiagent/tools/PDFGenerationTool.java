@@ -2,7 +2,6 @@ package com.api.aiagent.tools;
 
 import cn.hutool.core.io.FileUtil;
 import com.api.aiagent.constants.FileConstant;
-import com.itextpdf.io.exceptions.IOException;
 import com.itextpdf.kernel.font.PdfFont;
 import com.itextpdf.kernel.font.PdfFontFactory;
 import com.itextpdf.kernel.pdf.PdfDocument;

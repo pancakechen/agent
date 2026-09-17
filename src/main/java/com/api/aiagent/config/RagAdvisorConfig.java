@@ -1,10 +1,6 @@
 package com.api.aiagent.config;
 
 
-import com.api.aiagent.tools.PdfGenerationTools;
-import com.api.aiagent.tools.TerminalTools;
-import com.api.aiagent.tools.WebFetchTools;
-import com.api.aiagent.tools.WebSearchTools;
 import jakarta.annotation.Resource;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
