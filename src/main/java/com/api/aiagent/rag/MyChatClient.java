@@ -4,10 +4,12 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
+import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.ai.tool.ToolCallbackProvider;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -18,16 +20,16 @@ public class MyChatClient {
 
     private final ToolCallback[] allTools;
 
-    public MyChatClient(ChatClient.Builder chatClientBuilder,
+    public MyChatClient(@Qualifier("zhiPuAiChatModel") ChatModel chatModel,
                         ChatMemory chatMemory,
                         VectorStore vectorStore,
                         ToolCallback[] allTools,
                         ToolCallbackProvider toolCallbackProvider) {
         this.allTools = allTools;
 
-        this.chatClient = chatClientBuilder
+        this.chatClient = ChatClient.builder(chatModel)
                 .defaultSystem("""
-                    你是一个恋爱大师，请以恋爱大师的口吻回答问题。
+                    你是一个胖东来的高级人事经理，请以专业人士的口吻回答问题。
                     如果检索到的资料中没有相关内容，直接明确说明知识库中没有相关信息，不要编造""")
                 .defaultAdvisors(
                         MessageChatMemoryAdvisor
@@ -40,6 +42,7 @@ public class MyChatClient {
                                         .build())
                                 .build()
                 )
+                .defaultToolCallbacks(allTools)
                 .build();
     }
 
@@ -47,7 +50,7 @@ public class MyChatClient {
         return this.chatClient
                 .prompt()
                 .user(userInput)
-                .tools((Object) allTools)
+//                .tools(allTools)
                 .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, conversationId))
                 .call()
                 .content();

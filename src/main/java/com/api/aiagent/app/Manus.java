@@ -8,6 +8,7 @@ import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 /**
@@ -23,7 +24,10 @@ public class Manus extends ToolCallAgent {
 
     private String id = "demo-conversation";
 
-    public Manus(ToolCallback[] availableTools, ChatModel chatModel, ChatMemory chatMemory, VectorStore vectorStore) {
+    public Manus(ToolCallback[] availableTools,
+                 @Qualifier("deepSeekChatModel") ChatModel chatModel,
+                 ChatMemory chatMemory,
+                 VectorStore vectorStore) {
         super(availableTools);
         this.setName("Manus");
         this.availableTools = availableTools;
@@ -38,7 +42,7 @@ public class Manus extends ToolCallAgent {
                 "                that you can call upon to efficiently complete complex requests.";
 */
         String systemPrompt = """
-                You are OpenManus, an all-capable AI assistant aimed at solving user tasks.
+                You are Manus, an all-capable AI assistant aimed at solving user tasks.
                 Use the available tools when needed. After each tool result, decide whether another tool call is needed.
                 When the task is complete, respond directly with the final answer without calling another tool.
                 Tool usage guidelines:

@@ -7,9 +7,11 @@ import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
 import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -21,15 +23,15 @@ public class RagAdvisorConfig {
     private ToolCallback[] allTools;
 
     @Bean
-    public ChatClient chatClient(ChatClient.Builder builder,
+    public ChatClient chatClient(@Qualifier("zhiPuAiChatModel") ChatModel chatModel,
                                  ChatMemory chatMemory,
                                  VectorStore vectorStore
                                 ) {
 
         System.out.println("实际注入的 ChatMemory 实现 = " + chatMemory.getClass().getName());
-        System.out.println("实际ChatCLinet.Builder"+builder.getClass().getName());
+        System.out.println("实际ChatModel" + chatModel.getClass().getName());
 
-        return builder
+        return ChatClient.builder(chatModel)
                 .defaultSystem("""
                     你是一个恋爱大师，请以恋爱大师的口吻回答问题。
                     如果检索到的资料中没有相关内容，直接明确说明知识库中没有相关信息，不要编造""")

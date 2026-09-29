@@ -1,5 +1,6 @@
 package com.api.aiagent.app;
 
+import com.api.aiagent.rag.DocPressionChatClient;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import lombok.Data;
 import lombok.extern.log4j.Log4j2;
@@ -8,6 +9,7 @@ import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -47,6 +49,14 @@ public abstract class BaseAgent {
     // Spring AI 记忆功能
     private ChatMemory chatMemory;
     private String conversationId;
+
+    // 历史消息超过阈值时，用于压缩上下文的客户端
+    private DocPressionChatClient docPressionChatClient;
+
+    @Autowired
+    public void setDocPressionChatClient(DocPressionChatClient docPressionChatClient) {
+        this.docPressionChatClient = docPressionChatClient;
+    }
 
 
 /*
@@ -98,9 +108,9 @@ public abstract class BaseAgent {
     }
 */
 
-    public synchronized String run(String userPrompt){
+    public synchronized String run(String userPrompt) {
 
-        if (StringUtils.isEmpty(userPrompt)){
+        if (StringUtils.isEmpty(userPrompt)) {
             throw new IllegalArgumentException("userPrompt can not be empty");
         }
 
@@ -114,7 +124,7 @@ public abstract class BaseAgent {
         messagesList.add(userMessage);
 
         try {
-            for (int i = 0; i < maxStep && agentState == AgentState.RUNNING; i++){
+            for (int i = 0; i < maxStep && agentState == AgentState.RUNNING; i++) {
                 currentStep = i + 1;
                 log.info("当前正在执行第: " + currentStep + "步");
                 step();
@@ -132,16 +142,16 @@ public abstract class BaseAgent {
             }
 
             return finalAnswer == null ? "执行错误：智能体执行失败" : finalAnswer;
-        }catch (Exception e){
+        } catch (Exception e) {
             agentState = AgentState.ERROR;
             log.error("运行错误：" + e.getMessage());
             return "执行错误：" + e.getMessage();
-        }finally {
+        } finally {
             cleanup();
         }
     }
 
-    private void resetTask(){
+    private void resetTask() {
         agentState = AgentState.IDLE;
         currentStep = 0;
         finalAnswer = null;
@@ -155,7 +165,7 @@ public abstract class BaseAgent {
     /**
      * 资源清理
      */
-    protected void cleanup(){
+    protected void cleanup() {
         //子方法可以重写此方法来清理资源
     }
 
@@ -165,14 +175,61 @@ public abstract class BaseAgent {
     private void loadHistoryFromChatMemory() {
         if (chatMemory != null && !StringUtils.isEmpty(conversationId)) {
             try {
+                // todo 可以改成自己用jdbc查数据库 方便进行数据压缩
                 List<Message> historyMessages = chatMemory.get(conversationId);
                 if (historyMessages != null && !historyMessages.isEmpty()) {
-                    messagesList.addAll(historyMessages);
                     log.info("从 ChatMemory 加载了 " + historyMessages.size() + " 条历史消息");
+
+                    if (historyMessages.size() > 5 && docPressionChatClient != null) {
+                        String compressedHistory = compressHistory(historyMessages);
+                        if (!StringUtils.isEmpty(compressedHistory)) {
+                            messagesList.add(new AssistantMessage("历史对话摘要：\n" + compressedHistory));
+                            log.info("历史消息超过 5 条，已压缩为摘要");
+                        } else {
+                            messagesList.addAll(historyMessages);
+                            log.warn("历史消息压缩结果为空，保留原始历史消息");
+                        }
+                    } else {
+                        messagesList.addAll(historyMessages);
+                    }
                 }
+
+
             } catch (Exception e) {
                 log.warn("加载历史消息失败：" + e.getMessage());
             }
+        }
+    }
+
+    /**
+     * 只压缩历史消息，不包含 systemPrompt。
+     */
+    private String compressHistory(List<Message> historyMessages) {
+        String historyText = historyMessages.stream()
+                .map(message -> message.getMessageType().name() + ": " + message.getText())
+                .reduce((left, right) -> left + "\n" + right)
+                .orElse("");
+
+        String compressionPrompt = """
+                请将以下对话历史压缩为摘要，必须保留：
+                      1. 所有数字、金额、时间、订单号、姓名等具体值（原样保留，禁止改写）
+                      2. 用户明确表达的偏好、约束、否定意见（"不要X"必须保留"不要"）
+                      3. 已达成的结论与未解决的问题（分开列出）
+                      4. 用户做出的纠正（"我之前说错了，应该是..."）
+                      禁止：合并多条事实为一句；主观推测；省略否定词。
+                      输出格式：
+                      - 关键事实：
+                      - 用户偏好/约束：
+                      - 待解决：
+                      对话历史：
+                      %s
+                """.formatted(historyText);
+
+        try {
+            return docPressionChatClient.ChatClientResponse(compressionPrompt);
+        } catch (Exception e) {
+            log.warn("压缩历史消息失败：" + e.getMessage());
+            return "";
         }
     }
 

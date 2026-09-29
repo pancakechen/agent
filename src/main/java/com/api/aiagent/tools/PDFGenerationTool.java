@@ -11,6 +11,8 @@ import com.itextpdf.layout.element.Paragraph;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 
+import java.nio.file.Paths;
+
 public class PDFGenerationTool {
 
     @Tool(name="PDFGenerationTool",description = "Generate a PDF file with given content")
